@@ -1,0 +1,2285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Livegood Matrix Genealogy Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --cyan: #00f5ff;
+  --cyan-dim: #00c8d4;
+  --magenta: #ff00cc;
+  --gold: #ffd700;
+  --green: #00ff88;
+  --bg: #050a0f;
+  --bg2: #080f18;
+  --bg3: #0d1829;
+  --card: #0a1628;
+  --border: rgba(0,245,255,0.15);
+  --border-bright: rgba(0,245,255,0.4);
+  --text: #c8e8f0;
+  --muted: #4a7a8a;
+}
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ANIMATED BG */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+    radial-gradient(ellipse 600px 400px at 20% 30%, rgba(0,245,255,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 400px 600px at 80% 70%, rgba(255,0,204,0.03) 0%, transparent 70%);
+  pointer-events:none;
+  z-index:0;
+}
+
+/* GRID LINES */
+body::after {
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(0,245,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events:none;
+  z-index:0;
+}
+
+/* HEADER */
+header {
+  position:relative;
+  z-index:10;
+  padding: 24px 32px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(5,10,15,0.9);
+  backdrop-filter: blur(10px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:16px;
+}
+
+.logo {
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.logo-icon {
+  width:44px; height:44px;
+  border:2px solid var(--cyan);
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:'Orbitron',sans-serif;
+  font-size:14px;
+  font-weight:900;
+  color:var(--cyan);
+  position:relative;
+  box-shadow: 0 0 12px rgba(0,245,255,0.3);
+}
+
+.logo-text h1 {
+  font-family:'Orbitron',sans-serif;
+  font-size:16px;
+  font-weight:700;
+  color:var(--cyan);
+  letter-spacing:2px;
+  text-shadow: 0 0 10px rgba(0,245,255,0.5);
+}
+
+.logo-text p {
+  font-size:11px;
+  color:var(--muted);
+  letter-spacing:3px;
+  text-transform:uppercase;
+}
+
+.header-stats {
+  display:flex;
+  gap:24px;
+}
+
+.hstat {
+  text-align:center;
+}
+
+.hstat .val {
+  font-family:'Orbitron',sans-serif;
+  font-size:18px;
+  font-weight:700;
+  color:var(--cyan);
+  text-shadow: 0 0 8px rgba(0,245,255,0.5);
+}
+
+.hstat .lbl {
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:2px;
+  text-transform:uppercase;
+}
+
+/* LAYOUT */
+.app {
+  position:relative;
+  z-index:5;
+  display:grid;
+  grid-template-columns: 340px 1fr;
+  height: calc(100vh - 89px);
+}
+
+/* SIDEBAR */
+.sidebar {
+  border-right: 1px solid var(--border);
+  background: rgba(8,15,24,0.8);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.sidebar-section {
+  padding:20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-section h3 {
+  font-family:'Orbitron',sans-serif;
+  font-size:11px;
+  font-weight:600;
+  color:var(--cyan);
+  letter-spacing:3px;
+  text-transform:uppercase;
+  margin-bottom:14px;
+}
+
+/* FORM */
+.form-group {
+  margin-bottom:12px;
+}
+
+.form-group label {
+  display:block;
+  font-size:11px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+
+.form-group input, .form-group select {
+  width:100%;
+  background: rgba(0,245,255,0.04);
+  border: 1px solid var(--border);
+  border-radius:6px;
+  padding:10px 12px;
+  color:var(--text);
+  font-family:'Rajdhani',sans-serif;
+  font-size:14px;
+  outline:none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus, .form-group select:focus {
+  border-color:var(--cyan-dim);
+  box-shadow: 0 0 0 2px rgba(0,245,255,0.1);
+}
+
+.form-group select option {
+  background: var(--bg3);
+  color:var(--text);
+}
+
+.btn {
+  width:100%;
+  padding:11px;
+  border:none;
+  border-radius:6px;
+  font-family:'Orbitron',sans-serif;
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:2px;
+  cursor:pointer;
+  transition: all 0.2s;
+  text-transform:uppercase;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, rgba(0,245,255,0.15), rgba(0,200,212,0.1));
+  border:1px solid var(--cyan-dim);
+  color:var(--cyan);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, rgba(0,245,255,0.25), rgba(0,200,212,0.2));
+  box-shadow: 0 0 16px rgba(0,245,255,0.25);
+}
+
+.btn-danger {
+  background: rgba(255,50,50,0.08);
+  border:1px solid rgba(255,80,80,0.3);
+  color:#ff6060;
+  margin-top:6px;
+  font-size:10px;
+}
+
+.btn-danger:hover {
+  background: rgba(255,50,50,0.15);
+}
+
+/* MEMBER LIST */
+.member-list {
+  flex:1;
+  overflow-y:auto;
+  padding:12px;
+}
+
+.member-list::-webkit-scrollbar { width:4px; }
+.member-list::-webkit-scrollbar-track { background:transparent; }
+.member-list::-webkit-scrollbar-thumb { background:var(--border-bright); border-radius:2px; }
+
+.member-item {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  margin-bottom:6px;
+  cursor:pointer;
+  transition:all 0.2s;
+  background: rgba(0,245,255,0.02);
+}
+
+.member-item:hover {
+  border-color:var(--border-bright);
+  background: rgba(0,245,255,0.06);
+}
+
+.member-item.selected {
+  border-color:var(--cyan);
+  background: rgba(0,245,255,0.1);
+  box-shadow:0 0 10px rgba(0,245,255,0.15);
+}
+
+.member-item.root-member {
+  border-color:var(--gold);
+  background: rgba(255,215,0,0.05);
+}
+
+.member-info .name {
+  font-size:14px;
+  font-weight:600;
+  color:var(--text);
+}
+
+.member-info .meta {
+  font-size:11px;
+  color:var(--muted);
+  margin-top:2px;
+}
+
+.member-badge {
+  font-size:10px;
+  padding:3px 8px;
+  border-radius:20px;
+  font-family:'Orbitron',sans-serif;
+  font-weight:600;
+  letter-spacing:1px;
+}
+
+.badge-root { background:rgba(255,215,0,0.15); color:var(--gold); border:1px solid rgba(255,215,0,0.3); }
+.badge-l1 { background:rgba(0,255,136,0.1); color:var(--green); border:1px solid rgba(0,255,136,0.25); }
+.badge-l2 { background:rgba(0,245,255,0.08); color:var(--cyan-dim); border:1px solid rgba(0,245,255,0.2); }
+.badge-deep { background:rgba(255,0,204,0.08); color:var(--magenta); border:1px solid rgba(255,0,204,0.2); }
+
+.del-btn {
+  background:none;
+  border:none;
+  color:var(--muted);
+  cursor:pointer;
+  font-size:14px;
+  padding:4px 6px;
+  border-radius:4px;
+  transition:all 0.2s;
+  margin-left:8px;
+}
+
+.del-btn:hover { color:#ff6060; background:rgba(255,80,80,0.1); }
+
+/* EMPTY */
+.empty-state {
+  text-align:center;
+  padding:40px 20px;
+  color:var(--muted);
+}
+
+.empty-state .icon { font-size:40px; margin-bottom:12px; opacity:0.5; }
+.empty-state p { font-size:13px; line-height:1.6; }
+
+/* MAIN CANVAS */
+.canvas-area {
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.canvas-toolbar {
+  padding:14px 20px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:rgba(8,15,24,0.6);
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.canvas-toolbar .view-tabs {
+  display:flex;
+  gap:8px;
+}
+
+.tab-btn {
+  padding:7px 16px;
+  border-radius:6px;
+  border:1px solid var(--border);
+  background:transparent;
+  color:var(--muted);
+  font-family:'Rajdhani',sans-serif;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s;
+  letter-spacing:1px;
+}
+
+.tab-btn.active {
+  background:rgba(0,245,255,0.1);
+  border-color:var(--cyan-dim);
+  color:var(--cyan);
+}
+
+.zoom-controls {
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.zoom-btn {
+  width:30px; height:30px;
+  border-radius:6px;
+  border:1px solid var(--border);
+  background:rgba(0,245,255,0.05);
+  color:var(--cyan);
+  cursor:pointer;
+  font-size:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all 0.2s;
+}
+
+.zoom-btn:hover { border-color:var(--cyan-dim); background:rgba(0,245,255,0.1); }
+
+.zoom-label {
+  font-size:12px;
+  color:var(--muted);
+  min-width:40px;
+  text-align:center;
+  font-family:'Orbitron',sans-serif;
+}
+
+/* TREE VIEW */
+.tree-canvas {
+  flex:1;
+  overflow:auto;
+  position:relative;
+  padding:40px;
+  cursor:grab;
+}
+
+.tree-canvas:active { cursor:grabbing; }
+.tree-canvas::-webkit-scrollbar { width:6px; height:6px; }
+.tree-canvas::-webkit-scrollbar-track { background:transparent; }
+.tree-canvas::-webkit-scrollbar-thumb { background:var(--border-bright); border-radius:3px; }
+
+#treeContainer {
+  display:inline-block;
+  min-width:100%;
+  transform-origin: top left;
+  transition: transform 0.1s;
+}
+
+/* TREE NODES */
+.tree-level {
+  display:flex;
+  justify-content:center;
+  gap:16px;
+  position:relative;
+  margin-bottom:0;
+}
+
+.level-wrapper {
+  margin-bottom:48px;
+  position:relative;
+}
+
+.level-label {
+  text-align:center;
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:3px;
+  text-transform:uppercase;
+  margin-bottom:12px;
+  font-family:'Orbitron',sans-serif;
+}
+
+.node {
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.node-card {
+  width:130px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius:10px;
+  padding:12px 10px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.25s;
+  position:relative;
+  overflow:hidden;
+}
+
+.node-card::before {
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0;
+  height:2px;
+  background:var(--border-bright);
+}
+
+.node-card:hover {
+  border-color:var(--cyan-dim);
+  box-shadow: 0 0 16px rgba(0,245,255,0.2);
+  transform:translateY(-2px);
+}
+
+.node-card.root {
+  border-color:var(--gold);
+  background: rgba(255,215,0,0.06);
+  width:150px;
+}
+
+.node-card.root::before { background:var(--gold); }
+
+.node-card.filled {
+  border-color:rgba(0,245,255,0.35);
+}
+
+.node-card.filled::before { background:var(--cyan); }
+
+.node-card.empty {
+  border-color:rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.01);
+  cursor:default;
+  opacity:0.5;
+}
+
+.node-card.empty:hover {
+  transform:none;
+  box-shadow:none;
+}
+
+.node-avatar {
+  width:36px; height:36px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:'Orbitron',sans-serif;
+  font-size:13px;
+  font-weight:700;
+  margin:0 auto 8px;
+}
+
+.avatar-root { background:rgba(255,215,0,0.15); color:var(--gold); border:1px solid rgba(255,215,0,0.4); }
+.avatar-filled { background:rgba(0,245,255,0.1); color:var(--cyan); border:1px solid rgba(0,245,255,0.3); }
+.avatar-empty { background:rgba(255,255,255,0.03); color:rgba(255,255,255,0.15); border:1px dashed rgba(255,255,255,0.08); }
+
+.node-name {
+  font-size:12px;
+  font-weight:600;
+  color:var(--text);
+  word-break:break-word;
+  line-height:1.3;
+}
+
+.node-card.empty .node-name { color:rgba(255,255,255,0.15); font-size:11px; }
+
+.node-meta {
+  font-size:10px;
+  color:var(--muted);
+  margin-top:4px;
+}
+
+.node-date {
+  font-size:9px;
+  color:rgba(100,150,170,0.6);
+  margin-top:3px;
+}
+
+/* SVG CONNECTORS */
+.tree-svg {
+  position:absolute;
+  top:0; left:0;
+  width:100%; height:100%;
+  pointer-events:none;
+  overflow:visible;
+}
+
+/* TABLE VIEW */
+.table-view {
+  flex:1;
+  overflow:auto;
+  padding:24px;
+}
+
+.table-view::-webkit-scrollbar { width:6px; }
+.table-view::-webkit-scrollbar-thumb { background:var(--border-bright); border-radius:3px; }
+
+.data-table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+
+.data-table thead tr {
+  border-bottom:2px solid var(--border-bright);
+}
+
+.data-table th {
+  padding:12px 16px;
+  text-align:left;
+  font-family:'Orbitron',sans-serif;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--cyan);
+}
+
+.data-table td {
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  vertical-align:middle;
+}
+
+.data-table tr:hover td { background:rgba(0,245,255,0.03); }
+
+/* EARNINGS VIEW */
+.earnings-view {
+  flex:1;
+  overflow:auto;
+  padding:24px;
+}
+
+.earnings-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(200px,1fr));
+  gap:14px;
+  margin-bottom:28px;
+}
+
+.earn-card {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:20px;
+  position:relative;
+  overflow:hidden;
+}
+
+.earn-card::before {
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0;
+  height:2px;
+}
+
+.earn-card.cyan::before { background:var(--cyan); }
+.earn-card.green::before { background:var(--green); }
+.earn-card.gold::before { background:var(--gold); }
+.earn-card.magenta::before { background:var(--magenta); }
+
+.earn-label {
+  font-size:10px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:10px;
+}
+
+.earn-val {
+  font-family:'Orbitron',sans-serif;
+  font-size:24px;
+  font-weight:700;
+  margin-bottom:4px;
+}
+
+.earn-card.cyan .earn-val { color:var(--cyan); }
+.earn-card.green .earn-val { color:var(--green); }
+.earn-card.gold .earn-val { color:var(--gold); }
+.earn-card.magenta .earn-val { color:var(--magenta); }
+
+.earn-sub { font-size:12px; color:var(--muted); }
+
+.earnings-table {
+  width:100%;
+  border-collapse:collapse;
+}
+
+.earnings-table th {
+  font-family:'Orbitron',sans-serif;
+  font-size:10px;
+  letter-spacing:2px;
+  color:var(--cyan);
+  padding:10px 14px;
+  text-align:left;
+  border-bottom:1px solid var(--border-bright);
+}
+
+.earnings-table td {
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  font-size:13px;
+}
+
+.earnings-table tr:last-child td { border-bottom:none; }
+
+/* TOAST */
+.toast {
+  position:fixed;
+  bottom:24px; right:24px;
+  background:var(--card);
+  border:1px solid var(--cyan-dim);
+  border-radius:10px;
+  padding:14px 20px;
+  font-size:13px;
+  color:var(--cyan);
+  box-shadow: 0 0 24px rgba(0,245,255,0.2);
+  z-index:1000;
+  transform:translateY(80px);
+  opacity:0;
+  transition:all 0.3s;
+  font-family:'Rajdhani',sans-serif;
+  font-weight:600;
+}
+
+.toast.show { transform:translateY(0); opacity:1; }
+
+/* MODAL */
+.modal-overlay {
+  position:fixed;
+  inset:0;
+  background:rgba(5,10,15,0.85);
+  backdrop-filter:blur(6px);
+  z-index:500;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.2s;
+}
+
+.modal-overlay.open { opacity:1; pointer-events:all; }
+
+.modal {
+  background:var(--bg3);
+  border:1px solid var(--border-bright);
+  border-radius:14px;
+  padding:28px;
+  width:360px;
+  box-shadow: 0 0 40px rgba(0,245,255,0.15);
+  transform:scale(0.95);
+  transition:transform 0.2s;
+}
+
+.modal-overlay.open .modal { transform:scale(1); }
+
+.modal h3 {
+  font-family:'Orbitron',sans-serif;
+  font-size:14px;
+  color:var(--cyan);
+  margin-bottom:20px;
+  letter-spacing:2px;
+}
+
+.modal-actions {
+  display:flex;
+  gap:10px;
+  margin-top:20px;
+}
+
+.modal-actions .btn {
+  flex:1;
+}
+
+.btn-ghost {
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);
+  color:var(--muted);
+}
+
+.no-data {
+  text-align:center;
+  padding:60px;
+  color:var(--muted);
+}
+
+.no-data .icon { font-size:48px; margin-bottom:16px; opacity:0.3; }
+.no-data p { font-size:14px; line-height:1.8; }
+
+/* RESPONSIVE */
+@media (max-width:768px) {
+  .app { grid-template-columns:1fr; }
+  .sidebar { max-height:50vh; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">HT</div>
+    <div class="logo-text">
+      <h1>LiveGood</h1>
+      <p>Matrix Genealogy Tracker · LiveGood Network</p>
+    </div>
+  </div>
+  <div class="header-stats">
+    <div class="hstat">
+      <div class="val" id="statTotal">1</div>
+      <div class="lbl">Members</div>
+    </div>
+    <div class="hstat">
+      <div class="val" id="statLevels">1</div>
+      <div class="lbl">Levels</div>
+    </div>
+    <div class="hstat">
+      <div class="val" id="statMonthly">$0</div>
+      <div class="lbl">Matrix/Mo</div>
+    </div>
+    <div class="hstat">
+      <div class="val" id="statFastStart">$0</div>
+      <div class="lbl">Fast Start</div>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <h3>Add Member</h3>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="memberName" placeholder="e.g. Sione Tuilagi" />
+      </div>
+      <div class="form-group">
+        <label>Sponsor (Upline)</label>
+        <select id="sponsorSelect">
+          <option value="root">You (Root)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Join Date</label>
+        <input type="date" id="joinDate" />
+      </div>
+      <div class="form-group">
+        <label>Country</label>
+        <input type="text" id="memberCountry" placeholder="e.g. Samoa" />
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="memberType">
+          <option value="affiliate">Affiliate (Income + Products)</option>
+          <option value="member">Member (Products Only)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="addMember()">⊕ ADD TO MATRIX</button>
+    </div>
+
+    <div class="sidebar-section" style="padding-bottom:10px;">
+      <h3>Network (<span id="memberCount">1</span>)</h3>
+    </div>
+
+    <div class="member-list" id="memberList"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="canvas-area">
+    <div class="canvas-toolbar">
+      <div class="view-tabs">
+        <button class="tab-btn active" onclick="switchView('tree', this)">🌐 Tree View</button>
+        <button class="tab-btn" onclick="switchView('table', this)">📋 Table View</button>
+        <button class="tab-btn" onclick="switchView('earnings', this)">💰 Earnings</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="zoom-controls" id="zoomControls">
+          <button class="zoom-btn" onclick="zoom(-0.1)">−</button>
+          <div class="zoom-label" id="zoomLabel">100%</div>
+          <button class="zoom-btn" onclick="zoom(0.1)">+</button>
+          <button class="zoom-btn" onclick="resetZoom()" title="Reset">↺</button>
+        </div>
+        <button id="pdfBtn" onclick="generatePDF()" style="padding:7px 16px;border-radius:6px;border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.08);color:var(--gold);font-family:Orbitron,sans-serif;font-size:10px;font-weight:600;letter-spacing:2px;cursor:pointer;text-transform:uppercase;transition:all 0.2s;white-space:nowrap;" onmouseover="this.style.background='rgba(255,215,0,0.16)';this.style.boxShadow='0 0 14px rgba(255,215,0,0.25)'" onmouseout="this.style.background='rgba(255,215,0,0.08)';this.style.boxShadow='none'">⬇ PDF Report</button>
+      </div>
+    </div>
+
+    <!-- TREE -->
+    <div class="tree-canvas" id="treeView">
+      <div id="treeContainer"></div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-view" id="tableView" style="display:none;">
+      <table class="data-table" id="dataTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Sponsor</th>
+            <th>Level</th>
+            <th>Type</th>
+            <th>Country</th>
+            <th>Joined</th>
+            <th>Downline</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- EARNINGS -->
+    <div class="earnings-view" id="earningsView" style="display:none;">
+      <div class="earnings-grid" id="earningsCards"></div>
+      <table class="earnings-table" id="earningsTable">
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>Members</th>
+            <th>Matrix/Mo (2.5%)</th>
+            <th>Affiliates</th>
+            <th>Fast Start Earned</th>
+          </tr>
+        </thead>
+        <tbody id="earningsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="memberModal">
+  <div class="modal">
+    <h3 id="modalTitle">MEMBER DETAILS</h3>
+    <div id="modalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">CLOSE</button>
+      <button class="btn btn-danger" id="modalDelBtn">REMOVE</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== DATA ====================
+let members = [];
+
+let zoomLevel = 1;
+let currentView = 'tree';
+
+// ==================== SETUP SCREEN ====================
+function showSetupScreen() {
+  const overlay = document.createElement('div');
+  overlay.id = 'setupOverlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:9999;
+    background:rgba(5,10,15,0.97);
+    display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(10px);
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      width:420px;max-width:90vw;
+      background:var(--card);
+      border:1px solid var(--border-bright);
+      border-radius:16px;
+      padding:36px 32px;
+      box-shadow:0 0 60px rgba(0,245,255,0.12);
+      position:relative;
+    ">
+      <div style="text-align:center;margin-bottom:28px;">
+        <div style="
+          width:56px;height:56px;margin:0 auto 16px;
+          border:2px solid var(--gold);border-radius:10px;
+          display:flex;align-items:center;justify-content:center;
+          font-family:'Orbitron',sans-serif;font-size:18px;font-weight:900;
+          color:var(--gold);box-shadow:0 0 16px rgba(255,215,0,0.3);
+        ">HT</div>
+        <h2 style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:700;color:var(--gold);letter-spacing:2px;text-shadow:0 0 10px rgba(255,215,0,0.4);">MATRIX SETUP</h2>
+        <p style="font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:6px;">Set Up Your Root Affiliate</p>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Your Full Name *</label>
+        <input id="setupName" type="text" placeholder="e.g. Richard Vaalotu" style="
+          width:100%;background:rgba(0,245,255,0.04);border:1px solid var(--border);
+          border-radius:6px;padding:11px 14px;color:var(--text);
+          font-family:'Rajdhani',sans-serif;font-size:14px;outline:none;
+          transition:border-color 0.2s,box-shadow 0.2s;box-sizing:border-box;
+        " />
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Country</label>
+        <input id="setupCountry" type="text" placeholder="e.g. Samoa" style="
+          width:100%;background:rgba(0,245,255,0.04);border:1px solid var(--border);
+          border-radius:6px;padding:11px 14px;color:var(--text);
+          font-family:'Rajdhani',sans-serif;font-size:14px;outline:none;
+          transition:border-color 0.2s,box-shadow 0.2s;box-sizing:border-box;
+        " />
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <label style="display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Join Date</label>
+        <input id="setupDate" type="date" style="
+          width:100%;background:rgba(0,245,255,0.04);border:1px solid var(--border);
+          border-radius:6px;padding:11px 14px;color:var(--text);
+          font-family:'Rajdhani',sans-serif;font-size:14px;outline:none;
+          transition:border-color 0.2s,box-shadow 0.2s;box-sizing:border-box;
+        " />
+      </div>
+
+      <button onclick="confirmSetup()" style="
+        width:100%;padding:13px;border:none;border-radius:8px;
+        background:linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,180,0,0.12));
+        border:1px solid rgba(255,215,0,0.5);color:var(--gold);
+        font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;
+        letter-spacing:3px;cursor:pointer;text-transform:uppercase;
+        transition:all 0.2s;
+      " onmouseover="this.style.boxShadow='0 0 20px rgba(255,215,0,0.3)'"
+         onmouseout="this.style.boxShadow='none'">
+        ⊕ LAUNCH MY MATRIX
+      </button>
+
+      <p id="setupError" style="color:#ff6060;font-size:12px;text-align:center;margin-top:12px;display:none;"></p>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Focus input and set today's date
+  document.getElementById('setupDate').value = new Date().toISOString().split('T')[0];
+  setTimeout(() => document.getElementById('setupName').focus(), 100);
+
+  // Enter key support
+  overlay.addEventListener('keypress', e => { if (e.key === 'Enter') confirmSetup(); });
+
+  // Style focus states
+  ['setupName','setupCountry','setupDate'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('focus', () => { el.style.borderColor='var(--cyan-dim)'; el.style.boxShadow='0 0 0 2px rgba(0,245,255,0.1)'; });
+    el.addEventListener('blur', () => { el.style.borderColor=''; el.style.boxShadow=''; });
+  });
+}
+
+function confirmSetup() {
+  const name = document.getElementById('setupName').value.trim();
+  const country = document.getElementById('setupCountry').value.trim() || 'Unknown';
+  const joinDate = document.getElementById('setupDate').value || new Date().toISOString().split('T')[0];
+
+  if (!name) {
+    const err = document.getElementById('setupError');
+    err.textContent = '⚠ Please enter your name to continue.';
+    err.style.display = 'block';
+    document.getElementById('setupName').focus();
+    return;
+  }
+
+  // Create root member
+  members = [{
+    id: 'root',
+    name,
+    sponsorId: null,
+    level: 0,
+    joinDate,
+    country,
+    type: 'affiliate',
+    isRoot: true
+  }];
+
+  // Update the sponsor dropdown label
+  document.querySelector('#sponsorSelect option[value="root"]').textContent = `${name} (You)`;
+
+  // Remove overlay
+  document.getElementById('setupOverlay').remove();
+
+  document.getElementById('joinDate').value = new Date().toISOString().split('T')[0];
+  render();
+  showToast(`✓ Welcome, ${name}! Your matrix is ready.`);
+}
+
+// ==================== INIT ====================
+window.onload = () => {
+  document.getElementById('joinDate').value = new Date().toISOString().split('T')[0];
+  showSetupScreen();
+};
+
+// ==================== MEMBER OPS ====================
+function addMember() {
+  const name = document.getElementById('memberName').value.trim();
+  const sponsorId = document.getElementById('sponsorSelect').value;
+  const joinDate = document.getElementById('joinDate').value;
+  const country = document.getElementById('memberCountry').value.trim() || 'Unknown';
+  const type = document.getElementById('memberType').value;
+
+  if (!name) { showToast('⚠ Please enter a member name'); return; }
+
+  const sponsor = members.find(m => m.id === sponsorId);
+  const level = sponsor ? sponsor.level + 1 : 1;
+
+  if (level > 15) { showToast('⚠ Max matrix depth is 15 levels'); return; }
+
+  // Check 2x matrix limit for sponsor
+  const directChildren = members.filter(m => m.sponsorId === sponsorId);
+  if (directChildren.length >= 2) {
+    showToast('⚠ Sponsor already has 2 direct members (2x matrix full). Choose another sponsor.');
+    return;
+  }
+
+  const member = {
+    id: 'm_' + Date.now(),
+    name,
+    sponsorId,
+    level,
+    joinDate,
+    country,
+    type
+  };
+
+  members.push(member);
+  showToast(`✓ ${name} added at Level ${level}`);
+  document.getElementById('memberName').value = '';
+  document.getElementById('memberCountry').value = '';
+  render();
+}
+
+function removeMember(id) {
+  if (id === 'root') { showToast('⚠ Cannot remove yourself'); return; }
+
+  // Remove member and all their downline recursively
+  const toRemove = getDownlineIds(id);
+  toRemove.push(id);
+  members = members.filter(m => !toRemove.includes(m.id));
+  closeModal();
+  showToast(`✓ Member and ${toRemove.length - 1} downline removed`);
+  render();
+}
+
+function getDownlineIds(id) {
+  const children = members.filter(m => m.sponsorId === id);
+  let ids = [];
+  children.forEach(c => {
+    ids.push(c.id);
+    ids = ids.concat(getDownlineIds(c.id));
+  });
+  return ids;
+}
+
+function getDirectChildren(id) {
+  return members.filter(m => m.sponsorId === id);
+}
+
+function getMemberLevel(id) {
+  const m = members.find(m => m.id === id);
+  return m ? m.level : 0;
+}
+
+function getDownlineCount(id) {
+  return getDownlineIds(id).length;
+}
+
+// ==================== RENDER ====================
+function render() {
+  updateStats();
+  updateSponsorSelect();
+  renderMemberList();
+  if (currentView === 'tree') renderTree();
+  else if (currentView === 'table') renderTable();
+  else renderEarnings();
+}
+
+function updateStats() {
+  const total = members.length;
+  const maxLevel = Math.max(...members.map(m => m.level));
+  const monthlyMatrix = members.reduce((sum, m) => {
+    if (m.level > 0) return sum + (9.95 * 0.025);
+    return sum;
+  }, 0);
+  const affiliates = members.filter(m => m.type === 'affiliate' && m.level > 0);
+  const fastStart = affiliates.length * 25;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statLevels').textContent = maxLevel || 1;
+  document.getElementById('statMonthly').textContent = '$' + monthlyMatrix.toFixed(2);
+  document.getElementById('statFastStart').textContent = '$' + fastStart;
+  document.getElementById('memberCount').textContent = total;
+}
+
+function updateSponsorSelect() {
+  const sel = document.getElementById('sponsorSelect');
+  const current = sel.value;
+  sel.innerHTML = '';
+
+  // Only show members who can accept more children (< 2 direct)
+  const eligible = members.filter(m => {
+    const children = members.filter(c => c.sponsorId === m.id);
+    return children.length < 2 && m.level < 15;
+  });
+
+  eligible.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    const children = members.filter(c => c.sponsorId === m.id);
+    opt.textContent = `${m.name} (Lvl ${m.level}, ${children.length}/2 slots used)`;
+    if (m.id === current) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function renderMemberList() {
+  const list = document.getElementById('memberList');
+  list.innerHTML = '';
+
+  if (members.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">🌐</div><p>No members yet.<br>Add your first member above.</p></div>`;
+    return;
+  }
+
+  members.forEach(m => {
+    const children = getDownlineCount(m.id);
+    const div = document.createElement('div');
+    div.className = `member-item ${m.isRoot ? 'root-member' : ''}`;
+    div.onclick = () => openModal(m.id);
+
+    let badgeClass = 'badge-l2';
+    let badgeText = `LVL ${m.level}`;
+    if (m.isRoot) { badgeClass = 'badge-root'; badgeText = 'YOU'; }
+    else if (m.level === 1) { badgeClass = 'badge-l1'; }
+    else if (m.level >= 5) { badgeClass = 'badge-deep'; }
+
+    div.innerHTML = `
+      <div class="member-info">
+        <div class="name">${m.name}</div>
+        <div class="meta">${m.country} · ${m.type === 'affiliate' ? '💼 Affiliate' : '🛒 Member'} · ${children} downline</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span class="member-badge ${badgeClass}">${badgeText}</span>
+        ${!m.isRoot ? `<button class="del-btn" onclick="event.stopPropagation();removeMember('${m.id}')">✕</button>` : ''}
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+// ==================== TREE RENDER ====================
+function renderTree() {
+  const container = document.getElementById('treeContainer');
+  container.innerHTML = '';
+
+  const root = members.find(m => m.isRoot);
+  if (!root) return;
+
+  // Build tree HTML level by level using BFS
+  const levelGroups = {};
+  members.forEach(m => {
+    if (!levelGroups[m.level]) levelGroups[m.level] = [];
+    levelGroups[m.level].push(m);
+  });
+
+  const maxLevelSeen = Math.max(...members.map(m => m.level));
+
+  // Wrapper div with relative positioning for SVG
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:relative; padding: 20px;';
+
+  for (let lvl = 0; lvl <= maxLevelSeen; lvl++) {
+    const lvlDiv = document.createElement('div');
+    lvlDiv.className = 'level-wrapper';
+    lvlDiv.setAttribute('data-level', lvl);
+
+    const label = document.createElement('div');
+    label.className = 'level-label';
+    label.textContent = lvl === 0 ? '◆ ROOT — YOU' : `LEVEL ${lvl} · ${(levelGroups[lvl]||[]).length} MEMBER${(levelGroups[lvl]||[]).length !== 1 ? 'S' : ''}`;
+    lvlDiv.appendChild(label);
+
+    const row = document.createElement('div');
+    row.className = 'tree-level';
+
+    const levelMembers = levelGroups[lvl] || [];
+
+    if (lvl === 0) {
+      // Root node
+      row.appendChild(createNodeEl(root));
+    } else {
+      // For each member at this level, render them in sponsor order
+      const prevLevel = levelGroups[lvl - 1] || [];
+      prevLevel.forEach(parent => {
+        const children = members.filter(m => m.sponsorId === parent.id);
+        children.forEach(child => row.appendChild(createNodeEl(child)));
+        // Show empty slots
+        const emptySlots = 2 - children.length;
+        for (let i = 0; i < emptySlots; i++) {
+          row.appendChild(createEmptyNode(parent.id));
+        }
+      });
+    }
+
+    lvlDiv.appendChild(row);
+    wrapper.appendChild(lvlDiv);
+  }
+
+  container.appendChild(wrapper);
+  container.style.transform = `scale(${zoomLevel})`;
+}
+
+function createNodeEl(member) {
+  const node = document.createElement('div');
+  node.className = 'node';
+  node.setAttribute('data-id', member.id);
+
+  const initials = member.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+  const cardClass = member.isRoot ? 'root' : 'filled';
+
+  node.innerHTML = `
+    <div class="node-card ${cardClass}" onclick="openModal('${member.id}')">
+      <div class="node-avatar ${member.isRoot ? 'avatar-root' : 'avatar-filled'}">${initials}</div>
+      <div class="node-name">${member.name}</div>
+      <div class="node-meta">${member.country}</div>
+      <div class="node-date">${member.type === 'affiliate' ? '💼' : '🛒'} ${member.joinDate}</div>
+    </div>
+  `;
+  return node;
+}
+
+function createEmptyNode(sponsorId) {
+  const node = document.createElement('div');
+  node.className = 'node';
+
+  node.innerHTML = `
+    <div class="node-card empty">
+      <div class="node-avatar avatar-empty">+</div>
+      <div class="node-name">Open Slot</div>
+    </div>
+  `;
+  return node;
+}
+
+// ==================== TABLE VIEW ====================
+function renderTable() {
+  const body = document.getElementById('tableBody');
+  body.innerHTML = '';
+
+  const sorted = [...members].sort((a,b) => a.level - b.level);
+
+  sorted.forEach((m, i) => {
+    const sponsor = members.find(s => s.id === m.sponsorId);
+    const downline = getDownlineCount(m.id);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--muted);font-size:12px;">${i + 1}</td>
+      <td>
+        <div style="font-weight:600;color:var(--text);">${m.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${m.country}</div>
+      </td>
+      <td style="color:var(--muted);">${sponsor ? sponsor.name : '—'}</td>
+      <td>
+        <span style="font-family:'Orbitron',sans-serif;font-size:12px;color:${m.level === 0 ? 'var(--gold)' : m.level <= 3 ? 'var(--green)' : 'var(--cyan)'};">
+          ${m.level === 0 ? 'ROOT' : 'L' + m.level}
+        </span>
+      </td>
+      <td style="color:${m.type === 'affiliate' ? 'var(--cyan)' : 'var(--muted)'};">
+        ${m.type === 'affiliate' ? '💼 Affiliate' : '🛒 Member'}
+      </td>
+      <td style="color:var(--muted);">${m.country}</td>
+      <td style="color:var(--muted);font-size:12px;">${m.joinDate}</td>
+      <td style="font-family:'Orbitron',sans-serif;color:var(--cyan);font-size:13px;">${downline}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+// ==================== EARNINGS VIEW ====================
+function renderEarnings() {
+  const maxLevel = Math.max(...members.map(m => m.level));
+
+  // Summary cards
+  let totalMatrix = 0;
+  let totalFastStart = 0;
+  let totalMembers = members.length - 1; // exclude root
+
+  // By level
+  const byLevel = {};
+  members.forEach(m => {
+    if (m.level === 0) return;
+    if (!byLevel[m.level]) byLevel[m.level] = { members: 0, affiliates: 0 };
+    byLevel[m.level].members++;
+    if (m.type === 'affiliate') byLevel[m.level].affiliates++;
+    totalMatrix += 9.95 * 0.025;
+    if (m.type === 'affiliate') totalFastStart += 25;
+  });
+
+  // Potential if matrix was full
+  let maxPotential = 0;
+  for (let l = 1; l <= 15; l++) {
+    maxPotential += Math.pow(2, l) * 9.95 * 0.025;
+  }
+
+  document.getElementById('earningsCards').innerHTML = `
+    <div class="earn-card cyan">
+      <div class="earn-label">Matrix Commission / Month</div>
+      <div class="earn-val">$${totalMatrix.toFixed(2)}</div>
+      <div class="earn-sub">2.5% × ${totalMembers} members × $9.95</div>
+    </div>
+    <div class="earn-card green">
+      <div class="earn-label">Fast Start Earned</div>
+      <div class="earn-val">$${totalFastStart}</div>
+      <div class="earn-sub">${members.filter(m => m.type === 'affiliate' && m.level > 0).length} affiliates × $25</div>
+    </div>
+    <div class="earn-card gold">
+      <div class="earn-label">Max Level Reached</div>
+      <div class="earn-val">${maxLevel}</div>
+      <div class="earn-sub">of 15 possible levels</div>
+    </div>
+    <div class="earn-card magenta">
+      <div class="earn-label">Full Matrix Potential</div>
+      <div class="earn-val">$${Math.round(maxPotential).toLocaleString()}</div>
+      <div class="earn-sub">All 15 levels × 2 wide filled</div>
+    </div>
+  `;
+
+  // Level breakdown table
+  const body = document.getElementById('earningsBody');
+  body.innerHTML = '';
+
+  for (let lvl = 1; lvl <= 15; lvl++) {
+    const data = byLevel[lvl] || { members: 0, affiliates: 0 };
+    const maxAtLevel = Math.pow(2, lvl);
+    const matrix = (data.members * 9.95 * 0.025).toFixed(2);
+    const fs = data.affiliates * 25;
+    const isFilled = data.members === maxAtLevel;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-family:'Orbitron',sans-serif;color:${data.members > 0 ? 'var(--cyan)' : 'var(--muted)'};font-size:13px;">L${lvl}</td>
+      <td>
+        <span style="color:${data.members > 0 ? 'var(--text)' : 'var(--muted)'};">${data.members}</span>
+        <span style="color:var(--muted);font-size:11px;"> / ${maxAtLevel} max</span>
+        ${isFilled ? '<span style="color:var(--green);font-size:10px;margin-left:6px;">● FULL</span>' : ''}
+      </td>
+      <td style="color:${parseFloat(matrix) > 0 ? 'var(--green)' : 'var(--muted)'};">$${matrix}</td>
+      <td style="color:var(--muted);">${data.affiliates}</td>
+      <td style="color:${fs > 0 ? 'var(--gold)' : 'var(--muted)'};">${fs > 0 ? '$' + fs : '—'}</td>
+    `;
+    body.appendChild(tr);
+  }
+
+  // Total row
+  const totalRow = document.createElement('tr');
+  totalRow.style.cssText = 'border-top:2px solid var(--border-bright);font-weight:600;';
+  totalRow.innerHTML = `
+    <td style="font-family:'Orbitron',sans-serif;color:var(--gold);">TOTAL</td>
+    <td style="font-family:'Orbitron',sans-serif;color:var(--cyan);">${totalMembers}</td>
+    <td style="font-family:'Orbitron',sans-serif;color:var(--green);">$${totalMatrix.toFixed(2)}/mo</td>
+    <td style="color:var(--muted);">${members.filter(m => m.type === 'affiliate' && m.level > 0).length}</td>
+    <td style="font-family:'Orbitron',sans-serif;color:var(--gold);">$${totalFastStart}</td>
+  `;
+  body.appendChild(totalRow);
+}
+
+// ==================== MODAL ====================
+function openModal(id) {
+  const m = members.find(m => m.id === id);
+  if (!m) return;
+
+  const sponsor = members.find(s => s.id === m.sponsorId);
+  const downlineIds = getDownlineIds(m.id);
+  const directKids = getDirectChildren(m.id);
+  const matrixEarning = (downlineIds.length * 9.95 * 0.025).toFixed(2);
+
+  document.getElementById('modalTitle').textContent = m.name.toUpperCase();
+  document.getElementById('modalBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Level</div>
+        <div style="font-family:'Orbitron',sans-serif;font-size:18px;color:var(--cyan);">${m.level === 0 ? 'ROOT' : 'Level ' + m.level}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Type</div>
+        <div style="font-size:14px;color:var(--text);">${m.type === 'affiliate' ? '💼 Affiliate' : '🛒 Member'}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Country</div>
+        <div style="font-size:14px;color:var(--text);">${m.country}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Join Date</div>
+        <div style="font-size:14px;color:var(--text);">${m.joinDate}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Sponsor</div>
+        <div style="font-size:14px;color:var(--text);">${sponsor ? sponsor.name : 'None'}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Direct Members</div>
+        <div style="font-family:'Orbitron',sans-serif;font-size:18px;color:var(--green);">${directKids.length}<span style="font-size:12px;color:var(--muted);"> /2</span></div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Total Downline</div>
+        <div style="font-family:'Orbitron',sans-serif;font-size:18px;color:var(--cyan);">${downlineIds.length}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Matrix Earning</div>
+        <div style="font-family:'Orbitron',sans-serif;font-size:18px;color:var(--gold);">$${matrixEarning}<span style="font-size:10px;color:var(--muted);">/mo</span></div>
+      </div>
+    </div>
+    ${directKids.length > 0 ? `<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <div style="font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Direct Members</div>
+      ${directKids.map(k => `<div style="padding:6px 0;color:var(--text);font-size:13px;">→ ${k.name} (${k.country})</div>`).join('')}
+    </div>` : ''}
+  `;
+
+  const delBtn = document.getElementById('modalDelBtn');
+  if (m.isRoot) {
+    delBtn.style.display = 'none';
+  } else {
+    delBtn.style.display = '';
+    delBtn.onclick = () => removeMember(m.id);
+    delBtn.textContent = `REMOVE + ${downlineIds.length} DOWNLINE`;
+  }
+
+  document.getElementById('memberModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('memberModal').classList.remove('open');
+}
+
+document.getElementById('memberModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ==================== VIEW SWITCH ====================
+function switchView(view, btn) {
+  currentView = view;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.getElementById('treeView').style.display = view === 'tree' ? 'block' : 'none';
+  document.getElementById('tableView').style.display = view === 'table' ? 'block' : 'none';
+  document.getElementById('earningsView').style.display = view === 'earnings' ? 'block' : 'none';
+  document.getElementById('zoomControls').style.display = view === 'tree' ? 'flex' : 'none';
+
+  render();
+}
+
+// ==================== ZOOM ====================
+function zoom(delta) {
+  zoomLevel = Math.max(0.3, Math.min(2, zoomLevel + delta));
+  document.getElementById('treeContainer').style.transform = `scale(${zoomLevel})`;
+  document.getElementById('zoomLabel').textContent = Math.round(zoomLevel * 100) + '%';
+}
+
+function resetZoom() {
+  zoomLevel = 1;
+  document.getElementById('treeContainer').style.transform = 'scale(1)';
+  document.getElementById('zoomLabel').textContent = '100%';
+}
+
+// ==================== TOAST ====================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+
+// ==================== PDF REPORT GENERATOR ====================
+async function generatePDF() {
+  if (members.length === 0) { showToast('⚠ No data to export'); return; }
+
+  const btn = document.getElementById('pdfBtn');
+  btn.textContent = '⏳ Generating...';
+  btn.style.pointerEvents = 'none';
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pw = 210, ph = 297;
+    const root = members.find(m => m.isRoot);
+    const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+    const maxLevel = Math.max(...members.map(m => m.level));
+    const totalMembers = members.length - 1;
+    const affiliates = members.filter(m => m.type === 'affiliate' && !m.isRoot);
+    const totalMatrix = (totalMembers * 9.95 * 0.025).toFixed(2);
+    const totalFastStart = affiliates.length * 25;
+
+    // ── HELPER FUNCTIONS ──────────────────────────────────────────
+    function hex(h) {
+      const r = parseInt(h.slice(1,3),16)/255;
+      const g = parseInt(h.slice(3,5),16)/255;
+      const b = parseInt(h.slice(5,7),16)/255;
+      return [r,g,b];
+    }
+    function setFill(r,g,b,a=1){ doc.setFillColor(Math.round(r*255),Math.round(g*255),Math.round(b*255)); }
+    function setStroke(r,g,b){ doc.setDrawColor(Math.round(r*255),Math.round(g*255),Math.round(b*255)); }
+    function setTextC(r,g,b){ doc.setTextColor(Math.round(r*255),Math.round(g*255),Math.round(b*255)); }
+
+    const BG   = [5,10,15];
+    const BG2  = [8,15,24];
+    const BG3  = [13,24,41];
+    const CARD = [10,22,40];
+    const CYAN = [0,245,255];
+    const GOLD = [255,215,0];
+    const GREEN= [0,255,136];
+    const MAG  = [255,0,204];
+    const MUTED= [74,122,138];
+    const TEXT = [200,232,240];
+
+    function drawBg(pageW, pageH) {
+      doc.setFillColor(...BG);
+      doc.rect(0,0,pageW,pageH,'F');
+      // Grid lines
+      doc.setLineWidth(0.1);
+      doc.setDrawColor(0,245,255,15);
+      for(let x=0;x<pageW;x+=10){ doc.setDrawColor(0,30,35); doc.line(x,0,x,pageH); }
+      for(let y=0;y<pageH;y+=10){ doc.setDrawColor(0,30,35); doc.line(0,y,pageW,y); }
+    }
+
+    function drawGlowRect(x,y,w,h,r,g,b,alpha=0.12) {
+      doc.setFillColor(Math.round(r*alpha),Math.round(g*alpha),Math.round(b*alpha));
+      doc.roundedRect(x,y,w,h,2,2,'F');
+      doc.setLineWidth(0.3);
+      doc.setDrawColor(r,g,b);
+      doc.roundedRect(x,y,w,h,2,2,'S');
+    }
+
+    function drawTopBar(x,y,w,r,g,b) {
+      doc.setFillColor(r,g,b);
+      doc.roundedRect(x,y,w,0.8,0.4,0.4,'F');
+    }
+
+    function orb(size) { doc.setFontSize(size); }
+    function raj(size) { doc.setFontSize(size); }
+
+    // ── PAGE 1 — COVER / SUMMARY ──────────────────────────────────
+    drawBg(pw, ph);
+
+    // Header gradient bar
+    doc.setFillColor(0,40,50);
+    doc.rect(0,0,pw,36,'F');
+    doc.setFillColor(...CYAN,20);
+    doc.rect(0,0,pw,2,'F');
+    doc.setFillColor(...CYAN);
+    doc.rect(0,0,pw,0.8,'F');
+
+    // Logo box
+    doc.setFillColor(0,50,60);
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(...CYAN);
+    doc.roundedRect(12,8,20,20,2,2,'FD');
+    doc.setTextColor(...CYAN);
+    doc.setFont('helvetica','bold');
+    orb(8);
+    doc.text('HT',22,21,'center');
+
+    // Title
+    doc.setTextColor(...CYAN);
+    doc.setFont('helvetica','bold');
+    orb(14);
+    doc.text('HAMOTECH SOLUTIONS', 38, 17);
+    doc.setTextColor(...MUTED);
+    doc.setFont('helvetica','normal');
+    raj(7);
+    doc.text('LIVEGOOD MATRIX GENEALOGY TRACKER', 38, 24);
+    doc.setTextColor(150,170,180);
+    raj(6);
+    doc.text('CARRYING TECHNOLOGY FORWARD FOR THE PACIFIC', 38, 30);
+
+    // Report date top-right
+    doc.setTextColor(...MUTED);
+    raj(6);
+    doc.text(today, pw-12, 18, {align:'right'});
+    doc.text('GENERATED REPORT', pw-12, 23, {align:'right'});
+
+    // ── HERO SECTION
+    let cy = 48;
+    doc.setTextColor(...GOLD);
+    doc.setFont('helvetica','bold');
+    orb(18);
+    doc.text('MATRIX DASHBOARD', pw/2, cy, {align:'center'});
+    cy += 7;
+    doc.setTextColor(...MUTED);
+    doc.setFont('helvetica','normal');
+    raj(8);
+    doc.text(`Root Affiliate: ${root ? root.name.toUpperCase() : ''}  ·  ${root ? root.country : ''}  ·  Joined ${root ? root.joinDate : ''}`, pw/2, cy, {align:'center'});
+    cy += 12;
+
+    // ── 4 STAT CARDS
+    const cards = [
+      { label:'TOTAL NETWORK', val: members.length, sub:'incl. root', r:CYAN[0],g:CYAN[1],b:CYAN[2] },
+      { label:'MAX LEVEL', val: maxLevel, sub:'of 15 levels', r:GREEN[0],g:GREEN[1],b:GREEN[2] },
+      { label:'MATRIX / MO', val:'$'+totalMatrix, sub:'2.5% commission', r:GOLD[0],g:GOLD[1],b:GOLD[2] },
+      { label:'FAST START', val:'$'+totalFastStart, sub:affiliates.length+' affiliates × $25', r:MAG[0],g:MAG[1],b:MAG[2] },
+    ];
+    const cw = 42, ch = 26, cx0 = 12, gap = 2.5;
+    cards.forEach((c,i) => {
+      const cx = cx0 + i*(cw+gap);
+      drawGlowRect(cx, cy, cw, ch, c.r, c.g, c.b, 0.08);
+      drawTopBar(cx, cy, cw, c.r, c.g, c.b);
+      doc.setTextColor(c.r, c.g, c.b);
+      doc.setFont('helvetica','bold');
+      orb(7);
+      doc.text(c.label, cx+cw/2, cy+8, {align:'center'});
+      orb(15);
+      doc.text(String(c.val), cx+cw/2, cy+18, {align:'center'});
+      doc.setTextColor(...MUTED);
+      doc.setFont('helvetica','normal');
+      raj(5.5);
+      doc.text(c.sub, cx+cw/2, cy+23, {align:'center'});
+    });
+    cy += ch + 10;
+
+    // ── MATRIX TREE VISUALIZATION ──────────────────────────────────
+    doc.setTextColor(...CYAN);
+    doc.setFont('helvetica','bold');
+    orb(9);
+    doc.text('MATRIX TREE STRUCTURE', 12, cy);
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...CYAN,80);
+    doc.line(12, cy+2, pw-12, cy+2);
+    cy += 8;
+
+    // Group members by level
+    const byLevel = {};
+    members.forEach(m => {
+      if(!byLevel[m.level]) byLevel[m.level] = [];
+      byLevel[m.level].push(m);
+    });
+
+    const treeAreaW = pw - 24;
+    const nodeW = 28, nodeH = 10, levelGap = 16;
+    const maxLvlDisplay = Math.min(maxLevel, 6);
+    const treeAreaH = (maxLvlDisplay + 1) * levelGap + nodeH + 10;
+
+    // Draw tree background
+    doc.setFillColor(8,15,24);
+    doc.roundedRect(12, cy, treeAreaW, treeAreaH, 2, 2, 'F');
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...CYAN,30);
+    doc.roundedRect(12, cy, treeAreaW, treeAreaH, 2, 2, 'S');
+
+    function getNodePositions(lvl) {
+      const nodesAtLevel = byLevel[lvl] || [];
+      const count = nodesAtLevel.length;
+      const spacingX = Math.min(treeAreaW / (count + 1), nodeW + 4);
+      const startX = 12 + treeAreaW/2 - (count-1)*spacingX/2;
+      return nodesAtLevel.map((m, i) => ({
+        m,
+        x: startX + i * spacingX,
+        y: cy + 6 + lvl * levelGap
+      }));
+    }
+
+    // Draw connector lines first
+    doc.setLineWidth(0.4);
+    for (let lvl = 0; lvl <= maxLvlDisplay; lvl++) {
+      const positions = getNodePositions(lvl);
+      positions.forEach(pos => {
+        if(pos.m.sponsorId) {
+          const parentLvl = lvl - 1;
+          const parentPositions = getNodePositions(parentLvl);
+          const parent = parentPositions.find(p => p.m.id === pos.m.sponsorId);
+          if (parent) {
+            const isAffiliate = pos.m.type === 'affiliate';
+            doc.setDrawColor(isAffiliate ? CYAN[0] : MUTED[0], isAffiliate ? CYAN[1] : MUTED[1], isAffiliate ? CYAN[2] : MUTED[2]);
+            doc.setLineWidth(0.3);
+            doc.line(parent.x, parent.y + nodeH, pos.x, pos.y);
+          }
+        }
+      });
+    }
+
+    // Draw nodes
+    for (let lvl = 0; lvl <= maxLvlDisplay; lvl++) {
+      const positions = getNodePositions(lvl);
+      positions.forEach(pos => {
+        const m = pos.m;
+        const nx = pos.x - nodeW/2;
+        const ny = pos.y;
+        const isRoot = m.isRoot;
+        const isAffiliate = m.type === 'affiliate';
+
+        const nr = isRoot ? GOLD[0] : isAffiliate ? CYAN[0] : MUTED[0];
+        const ng = isRoot ? GOLD[1] : isAffiliate ? CYAN[1] : MUTED[1];
+        const nb = isRoot ? GOLD[2] : isAffiliate ? CYAN[2] : MUTED[2];
+
+        // Card bg
+        doc.setFillColor(13,24,41);
+        doc.roundedRect(nx, ny, nodeW, nodeH, 1.5, 1.5, 'F');
+        doc.setLineWidth(0.35);
+        doc.setDrawColor(nr,ng,nb);
+        doc.roundedRect(nx, ny, nodeW, nodeH, 1.5, 1.5, 'S');
+        // Top accent bar
+        doc.setFillColor(nr,ng,nb);
+        doc.rect(nx+1.5, ny, nodeW-3, 0.6, 'F');
+
+        // Avatar circle
+        doc.setFillColor(nr*0.15, ng*0.15, nb*0.15);
+        doc.circle(nx+5, ny+5.5, 3, 'F');
+        doc.setLineWidth(0.2);
+        doc.setDrawColor(nr,ng,nb);
+        doc.circle(nx+5, ny+5.5, 3, 'S');
+
+        // Initials
+        const initials = m.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+        doc.setTextColor(nr,ng,nb);
+        doc.setFont('helvetica','bold');
+        orb(4);
+        doc.text(initials, nx+5, ny+6.5, {align:'center'});
+
+        // Name
+        doc.setTextColor(...TEXT);
+        doc.setFont('helvetica','bold');
+        raj(4);
+        const displayName = m.name.length > 9 ? m.name.slice(0,8)+'…' : m.name;
+        doc.text(displayName, nx+9.5, ny+5, {maxWidth: nodeW-11});
+
+        // Level badge
+        doc.setTextColor(nr,ng,nb);
+        doc.setFont('helvetica','normal');
+        raj(3.5);
+        doc.text(isRoot ? 'ROOT' : `L${m.level}`, nx+9.5, ny+9, {maxWidth: nodeW-11});
+      });
+    }
+
+    if (maxLevel > maxLvlDisplay) {
+      doc.setTextColor(...MUTED);
+      raj(6);
+      doc.text(`+ ${maxLevel - maxLvlDisplay} more levels (see table on next page)`, pw/2, cy + treeAreaH - 4, {align:'center'});
+    }
+    cy += treeAreaH + 10;
+
+    // ── LEVEL BREAKDOWN TABLE ──────────────────────────────────────
+    doc.setTextColor(...CYAN);
+    doc.setFont('helvetica','bold');
+    orb(9);
+    doc.text('LEVEL BREAKDOWN', 12, cy);
+    doc.line(12, cy+2, pw-12, cy+2);
+    cy += 7;
+
+    const tHeaders = ['LEVEL','MEMBERS','MAX SLOTS','FILL %','AFFILIATES','MATRIX/MO'];
+    const tColW = [18,22,22,18,24,28];
+    const tX = [12,30,52,74,92,116];
+
+    // Header row
+    doc.setFillColor(0,40,50);
+    doc.rect(12, cy-4, pw-24, 8, 'F');
+    tHeaders.forEach((h,i) => {
+      doc.setTextColor(...CYAN);
+      doc.setFont('helvetica','bold');
+      orb(6);
+      doc.text(h, tX[i]+1, cy+0.5);
+    });
+    cy += 6;
+
+    const displayLevels = Math.min(maxLevel, 12);
+    for (let lvl = 1; lvl <= displayLevels; lvl++) {
+      const lvlMembers = members.filter(m => m.level === lvl);
+      const maxSlots = Math.pow(2, lvl);
+      const fill = ((lvlMembers.length / maxSlots)*100).toFixed(0);
+      const lvlAffiliates = lvlMembers.filter(m => m.type === 'affiliate').length;
+      const matrix = (lvlMembers.length * 9.95 * 0.025).toFixed(2);
+      const isFull = lvlMembers.length === maxSlots;
+
+      if (lvl % 2 === 0) {
+        doc.setFillColor(10,20,33);
+        doc.rect(12, cy-3.5, pw-24, 7, 'F');
+      }
+
+      const lvlColor = lvlMembers.length > 0 ? (isFull ? GREEN : CYAN) : MUTED;
+      doc.setTextColor(...lvlColor);
+      doc.setFont('helvetica','bold');
+      raj(6.5);
+      doc.text(`L${lvl}`, tX[0]+1, cy+0.5);
+
+      doc.setTextColor(...TEXT);
+      doc.setFont('helvetica','normal');
+      doc.text(String(lvlMembers.length), tX[1]+1, cy+0.5);
+      doc.text(String(maxSlots), tX[2]+1, cy+0.5);
+      doc.setTextColor(...(isFull ? GREEN : lvlMembers.length > 0 ? CYAN : MUTED));
+      doc.text(fill+'%', tX[3]+1, cy+0.5);
+      doc.setTextColor(...TEXT);
+      doc.text(String(lvlAffiliates), tX[4]+1, cy+0.5);
+      doc.setTextColor(isFull ? GREEN[0] : GOLD[0], isFull ? GREEN[1] : GOLD[1], isFull ? GREEN[2] : GOLD[2]);
+      doc.text('$'+matrix, tX[5]+1, cy+0.5);
+
+      // Full badge
+      if (isFull) {
+        doc.setFillColor(0,255,136,30);
+        doc.setTextColor(...GREEN);
+        doc.setFont('helvetica','bold');
+        raj(5);
+        doc.text('● FULL', tX[5]+14, cy+0.5);
+      }
+      cy += 7;
+    }
+
+    // Totals row
+    doc.setFillColor(0,40,50);
+    doc.rect(12, cy-3.5, pw-24, 8, 'F');
+    doc.setLineWidth(0.4);
+    doc.setDrawColor(...GOLD);
+    doc.line(12, cy-3.5, pw-12, cy-3.5);
+    doc.setTextColor(...GOLD);
+    doc.setFont('helvetica','bold');
+    raj(7);
+    doc.text('TOTAL', tX[0]+1, cy+1);
+    doc.text(String(totalMembers), tX[1]+1, cy+1);
+    doc.text('—', tX[2]+1, cy+1);
+    doc.setTextColor(...GREEN);
+    doc.text('$'+totalMatrix+'/mo', tX[3]+1, cy+1);
+    doc.setTextColor(...GOLD);
+    doc.text(String(affiliates.length), tX[4]+1, cy+1);
+    doc.text('$'+totalFastStart, tX[5]+1, cy+1);
+    cy += 12;
+
+    // ── PAGE 2 — FULL MEMBER ROSTER ───────────────────────────────
+    doc.addPage();
+    drawBg(pw, ph);
+
+    // Header bar
+    doc.setFillColor(0,40,50);
+    doc.rect(0,0,pw,20,'F');
+    doc.setFillColor(...GOLD);
+    doc.rect(0,0,pw,0.8,'F');
+    doc.setTextColor(...GOLD);
+    doc.setFont('helvetica','bold');
+    orb(11);
+    doc.text('FULL MEMBER ROSTER', pw/2, 13, {align:'center'});
+    doc.setTextColor(...MUTED);
+    raj(6);
+    doc.text(today, pw-12, 13, {align:'right'});
+
+    cy = 28;
+    const rHeaders = ['#','NAME','SPONSOR','LEVEL','TYPE','COUNTRY','JOINED','DOWNLINE'];
+    const rColW =    [8,  38,    32,       14,     18,    24,       20,      16];
+    const rX = [];
+    let rx = 10;
+    rColW.forEach(w => { rX.push(rx); rx += w; });
+
+    // Header
+    doc.setFillColor(0,40,50);
+    doc.rect(10, cy-4, pw-20, 8, 'F');
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...CYAN);
+    doc.line(10, cy+4, pw-10, cy+4);
+    rHeaders.forEach((h,i) => {
+      doc.setTextColor(...CYAN);
+      doc.setFont('helvetica','bold');
+      orb(5.5);
+      doc.text(h, rX[i]+1, cy+0.5);
+    });
+    cy += 6;
+
+    const sorted = [...members].sort((a,b) => a.level - b.level);
+    sorted.forEach((m, idx) => {
+      if (cy > ph - 20) {
+        doc.addPage();
+        drawBg(pw, ph);
+        doc.setFillColor(0,40,50);
+        doc.rect(0,0,pw,12,'F');
+        doc.setFillColor(...GOLD);
+        doc.rect(0,0,pw,0.8,'F');
+        doc.setTextColor(...GOLD);
+        doc.setFont('helvetica','bold');
+        orb(8);
+        doc.text('MEMBER ROSTER (CONT.)', pw/2, 8, {align:'center'});
+        cy = 20;
+        // Re-draw header
+        doc.setFillColor(0,40,50);
+        doc.rect(10, cy-4, pw-20, 8, 'F');
+        rHeaders.forEach((h,i) => {
+          doc.setTextColor(...CYAN);
+          doc.setFont('helvetica','bold');
+          orb(5.5);
+          doc.text(h, rX[i]+1, cy+0.5);
+        });
+        cy += 6;
+      }
+
+      if (idx % 2 === 0) {
+        doc.setFillColor(10,20,33);
+        doc.rect(10, cy-3.5, pw-20, 7, 'F');
+      }
+
+      const sponsor = members.find(s => s.id === m.sponsorId);
+      const downline = getDownlineCount(m.id);
+      const lvlColor = m.isRoot ? GOLD : m.level <= 3 ? GREEN : CYAN;
+
+      doc.setTextColor(...MUTED);
+      doc.setFont('helvetica','normal');
+      raj(5.5);
+      doc.text(String(idx+1), rX[0]+1, cy+0.5);
+      doc.setTextColor(...TEXT);
+      doc.setFont('helvetica','bold');
+      doc.text(m.name.slice(0,18), rX[1]+1, cy+0.5);
+      doc.setTextColor(...MUTED);
+      doc.setFont('helvetica','normal');
+      doc.text(sponsor ? sponsor.name.slice(0,14) : '—', rX[2]+1, cy+0.5);
+      doc.setTextColor(...lvlColor);
+      doc.setFont('helvetica','bold');
+      doc.text(m.isRoot ? 'ROOT' : 'L'+m.level, rX[3]+1, cy+0.5);
+      doc.setTextColor(m.type==='affiliate' ? CYAN[0] : MUTED[0], m.type==='affiliate' ? CYAN[1] : MUTED[1], m.type==='affiliate' ? CYAN[2] : MUTED[2]);
+      doc.setFont('helvetica','normal');
+      doc.text(m.type==='affiliate' ? 'Affiliate' : 'Member', rX[4]+1, cy+0.5);
+      doc.setTextColor(...MUTED);
+      doc.text(m.country.slice(0,12), rX[5]+1, cy+0.5);
+      doc.text(m.joinDate, rX[6]+1, cy+0.5);
+      doc.setTextColor(...CYAN);
+      doc.setFont('helvetica','bold');
+      doc.text(String(downline), rX[7]+1, cy+0.5);
+
+      cy += 7;
+    });
+
+    // ── FOOTER on all pages ───────────────────────────────────────
+    const pageCount = doc.getNumberOfPages();
+    for (let p = 1; p <= pageCount; p++) {
+      doc.setPage(p);
+      doc.setFillColor(0,30,40);
+      doc.rect(0, ph-12, pw, 12, 'F');
+      doc.setFillColor(...CYAN);
+      doc.rect(0, ph-12, pw, 0.4, 'F');
+      doc.setTextColor(...MUTED);
+      doc.setFont('helvetica','normal');
+      raj(5.5);
+      doc.text('HAMOTECH SOLUTIONS  ·  Carrying Technology Forward for the Pacific  ·  hamotechsolutions.com', pw/2, ph-5, {align:'center'});
+      doc.text(`Page ${p} of ${pageCount}`, pw-12, ph-5, {align:'right'});
+    }
+
+
+    // ── PAGE — EARNINGS & PROJECTIONS ────────────────────────────
+    doc.addPage();
+    drawBg(pw, ph);
+
+    // Header bar
+    doc.setFillColor(0,40,50);
+    doc.rect(0,0,pw,20,'F');
+    doc.setFillColor(...GREEN);
+    doc.rect(0,0,pw,0.8,'F');
+    doc.setTextColor(...GREEN);
+    doc.setFont('helvetica','bold');
+    orb(11);
+    doc.text('EARNINGS & PROJECTIONS', pw/2, 13, {align:'center'});
+    doc.setTextColor(...MUTED);
+    raj(6);
+    doc.text(today, pw-12, 13, {align:'right'});
+
+    cy = 28;
+
+    // ── EARNINGS SUMMARY CARDS (2x2 grid) ─────────────────────────
+    doc.setTextColor(...GREEN);
+    doc.setFont('helvetica','bold');
+    orb(9);
+    doc.text('CURRENT EARNINGS SNAPSHOT', 12, cy);
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...GREEN, 80);
+    doc.line(12, cy+2, pw-12, cy+2);
+    cy += 8;
+
+    // Recalculate all earnings data
+    let totalMatrixE = 0, totalFastStartE = 0;
+    const byLevelE = {};
+    members.forEach(m => {
+      if (m.level === 0) return;
+      if (!byLevelE[m.level]) byLevelE[m.level] = { count: 0, affiliates: 0 };
+      byLevelE[m.level].count++;
+      if (m.type === 'affiliate') byLevelE[m.level].affiliates++;
+      totalMatrixE += 9.95 * 0.025;
+      if (m.type === 'affiliate') totalFastStartE += 25;
+    });
+    let maxPotential = 0;
+    for (let l = 1; l <= 15; l++) maxPotential += Math.pow(2, l) * 9.95 * 0.025;
+    const totalMembersE = members.length - 1;
+    const affiliatesE = members.filter(m => m.type === 'affiliate' && !m.isRoot);
+    const maxLevelE = Math.max(...members.map(m => m.level));
+    const fillPct = members.length > 1 ? ((totalMembersE / (Math.pow(2, maxLevelE+1) - 2)) * 100).toFixed(1) : '0.0';
+
+    const eCards = [
+      { label:'MATRIX COMMISSION / MO', val:'$'+totalMatrixE.toFixed(2), sub:'2.5% × '+totalMembersE+' members × $9.95', r:CYAN[0],g:CYAN[1],b:CYAN[2] },
+      { label:'FAST START BONUSES', val:'$'+totalFastStartE, sub:affiliatesE.length+' affiliates enrolled × $25', r:GREEN[0],g:GREEN[1],b:GREEN[2] },
+      { label:'TOTAL EARNED TO DATE', val:'$'+(totalMatrixE+totalFastStartE).toFixed(2), sub:'Matrix + Fast Start combined', r:GOLD[0],g:GOLD[1],b:GOLD[2] },
+      { label:'FULL MATRIX POTENTIAL', val:'$'+Math.round(maxPotential).toLocaleString(), sub:'All 15 levels × 2 wide filled', r:MAG[0],g:MAG[1],b:MAG[2] },
+    ];
+
+    const ecw = 42, ech = 28, ecx0 = 12, egap = 2.5;
+    eCards.forEach((c,i) => {
+      const ecx = ecx0 + i*(ecw+egap);
+      drawGlowRect(ecx, cy, ecw, ech, c.r, c.g, c.b, 0.08);
+      drawTopBar(ecx, cy, ecw, c.r, c.g, c.b);
+      doc.setTextColor(c.r, c.g, c.b);
+      doc.setFont('helvetica','bold');
+      orb(5.5);
+      doc.text(c.label, ecx+ecw/2, cy+7, {align:'center', maxWidth: ecw-4});
+      orb(13);
+      doc.text(String(c.val), ecx+ecw/2, cy+18, {align:'center'});
+      doc.setTextColor(...MUTED);
+      doc.setFont('helvetica','normal');
+      raj(4.5);
+      doc.text(c.sub, ecx+ecw/2, cy+24, {align:'center', maxWidth: ecw-4});
+    });
+    cy += ech + 10;
+
+    // ── EARNINGS BY LEVEL TABLE ────────────────────────────────────
+    doc.setTextColor(...GREEN);
+    doc.setFont('helvetica','bold');
+    orb(9);
+    doc.text('EARNINGS BREAKDOWN BY LEVEL', 12, cy);
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...GREEN,80);
+    doc.line(12, cy+2, pw-12, cy+2);
+    cy += 8;
+
+    const eHeaders = ['LEVEL','MEMBERS','MAX SLOTS','AFFILIATES','MATRIX/MO','FAST START','LEVEL TOTAL'];
+    const eColW   = [16,      20,        20,          20,           24,          22,           24];
+    const eX = [];
+    let ex = 12;
+    eColW.forEach(w => { eX.push(ex); ex += w; });
+
+    // Header row
+    doc.setFillColor(0,40,50);
+    doc.rect(12, cy-4, pw-24, 8, 'F');
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...GREEN);
+    doc.line(12, cy+4, pw-12, cy+4);
+    eHeaders.forEach((h,i) => {
+      doc.setTextColor(...GREEN);
+      doc.setFont('helvetica','bold');
+      orb(5.5);
+      doc.text(h, eX[i]+1, cy+0.5);
+    });
+    cy += 6;
+
+    let grandMatrix = 0, grandFS = 0;
+    for (let lvl = 1; lvl <= 15; lvl++) {
+      const data = byLevelE[lvl] || { count: 0, affiliates: 0 };
+      const maxSlots = Math.pow(2, lvl);
+      const matrix = data.count * 9.95 * 0.025;
+      const fs = data.affiliates * 25;
+      const lvlTotal = matrix + fs;
+      grandMatrix += matrix;
+      grandFS += fs;
+
+      if (lvl % 2 === 0) {
+        doc.setFillColor(10,20,33);
+        doc.rect(12, cy-3.5, pw-24, 7, 'F');
+      }
+
+      const hasData = data.count > 0;
+      const isFull = data.count === maxSlots;
+      const lvlC = isFull ? GREEN : hasData ? CYAN : MUTED;
+
+      doc.setTextColor(...lvlC);
+      doc.setFont('helvetica','bold');
+      raj(6);
+      doc.text('L'+lvl, eX[0]+1, cy+0.5);
+
+      doc.setTextColor(...(hasData ? TEXT : MUTED));
+      doc.setFont('helvetica','normal');
+      doc.text(String(data.count), eX[1]+1, cy+0.5);
+      doc.setTextColor(...MUTED);
+      doc.text(String(maxSlots), eX[2]+1, cy+0.5);
+      doc.setTextColor(...(data.affiliates > 0 ? CYAN : MUTED));
+      doc.text(String(data.affiliates), eX[3]+1, cy+0.5);
+      doc.setTextColor(...(matrix > 0 ? GREEN : MUTED));
+      doc.text(matrix > 0 ? '$'+matrix.toFixed(2) : '—', eX[4]+1, cy+0.5);
+      doc.setTextColor(...(fs > 0 ? GOLD : MUTED));
+      doc.text(fs > 0 ? '$'+fs : '—', eX[5]+1, cy+0.5);
+      doc.setTextColor(...(lvlTotal > 0 ? [255,255,255] : MUTED));
+      doc.setFont('helvetica','bold');
+      doc.text(lvlTotal > 0 ? '$'+lvlTotal.toFixed(2) : '—', eX[6]+1, cy+0.5);
+
+      cy += 7;
+    }
+
+    // Grand total row
+    doc.setFillColor(0,50,30);
+    doc.rect(12, cy-3.5, pw-24, 9, 'F');
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(...GREEN);
+    doc.line(12, cy-3.5, pw-12, cy-3.5);
+    doc.setTextColor(...GOLD);
+    doc.setFont('helvetica','bold');
+    raj(7);
+    doc.text('GRAND TOTAL', eX[0]+1, cy+1.5);
+    doc.text(String(totalMembersE), eX[1]+1, cy+1.5);
+    doc.text('—', eX[2]+1, cy+1.5);
+    doc.setTextColor(...CYAN);
+    doc.text(String(affiliatesE.length), eX[3]+1, cy+1.5);
+    doc.setTextColor(...GREEN);
+    doc.text('$'+grandMatrix.toFixed(2)+'/mo', eX[4]+1, cy+1.5);
+    doc.setTextColor(...GOLD);
+    doc.text('$'+grandFS, eX[5]+1, cy+1.5);
+    doc.setTextColor(...[255,255,255]);
+    orb(8);
+    doc.text('$'+(grandMatrix+grandFS).toFixed(2), eX[6]+1, cy+1.5);
+    cy += 14;
+
+    // ── MATRIX GROWTH PROJECTION BAR CHART ────────────────────────
+    doc.setTextColor(...GOLD);
+    doc.setFont('helvetica','bold');
+    orb(9);
+    doc.text('MATRIX FILL PROGRESS BY LEVEL', 12, cy);
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...GOLD,80);
+    doc.line(12, cy+2, pw-12, cy+2);
+    cy += 8;
+
+    const barAreaW = pw - 24;
+    const barH = 5.5;
+    const barGap = 2;
+    const labelW = 14;
+    const barMaxW = barAreaW - labelW - 20;
+
+    for (let lvl = 1; lvl <= Math.min(maxLevelE, 10); lvl++) {
+      const data = byLevelE[lvl] || { count: 0, affiliates: 0 };
+      const maxSlots = Math.pow(2, lvl);
+      const pct = maxSlots > 0 ? data.count / maxSlots : 0;
+      const isFull = pct >= 1;
+      const barFillW = barMaxW * Math.min(pct, 1);
+      const barC = isFull ? GREEN : pct > 0.5 ? CYAN : pct > 0 ? [0,180,210] : MUTED;
+
+      // Label
+      doc.setTextColor(...(data.count > 0 ? barC : MUTED));
+      doc.setFont('helvetica','bold');
+      raj(6);
+      doc.text('L'+lvl, 12, cy+barH-1);
+
+      // Track bg
+      doc.setFillColor(15,30,45);
+      doc.roundedRect(12+labelW, cy, barMaxW, barH, 1,1,'F');
+
+      // Fill
+      if (barFillW > 0) {
+        doc.setFillColor(...barC);
+        doc.roundedRect(12+labelW, cy, barFillW, barH, 1,1,'F');
+      }
+
+      // Count text inside bar
+      doc.setTextColor(...(pct > 0.15 ? [0,0,0] : barC));
+      doc.setFont('helvetica','bold');
+      raj(5);
+      const barLabel = `${data.count} / ${maxSlots}`;
+      if (pct > 0.15) {
+        doc.text(barLabel, 12+labelW+barFillW/2, cy+barH-1, {align:'center'});
+      } else {
+        doc.setTextColor(...barC);
+        doc.text(barLabel, 12+labelW+barFillW+3, cy+barH-1);
+      }
+
+      // Pct right side
+      doc.setTextColor(...(isFull ? GREEN : MUTED));
+      doc.setFont('helvetica','bold');
+      raj(5.5);
+      doc.text((pct*100).toFixed(0)+'%', pw-12, cy+barH-1, {align:'right'});
+
+      cy += barH + barGap;
+    }
+
+    cy += 6;
+
+    // ── PROJECTIONS BOX ───────────────────────────────────────────
+    const projH = 32;
+    drawGlowRect(12, cy, pw-24, projH, GOLD[0], GOLD[1], GOLD[2], 0.06);
+    drawTopBar(12, cy, pw-24, GOLD[0], GOLD[1], GOLD[2]);
+
+    doc.setTextColor(...GOLD);
+    doc.setFont('helvetica','bold');
+    orb(8);
+    doc.text('INCOME POTENTIAL PROJECTIONS', pw/2, cy+8, {align:'center'});
+
+    const proj = [
+      { label:'At 50% fill (all 15 levels)', val:'$'+Math.round(maxPotential*0.5).toLocaleString()+'/mo' },
+      { label:'At 100% fill (full matrix)', val:'$'+Math.round(maxPotential).toLocaleString()+'/mo' },
+      { label:'Annual (full matrix)', val:'$'+Math.round(maxPotential*12).toLocaleString()+'/yr' },
+    ];
+    proj.forEach((p,i) => {
+      const px = 20 + i * 60;
+      doc.setTextColor(...MUTED);
+      doc.setFont('helvetica','normal');
+      raj(6);
+      doc.text(p.label, px, cy+18, {maxWidth:55});
+      doc.setTextColor(...GOLD);
+      doc.setFont('helvetica','bold');
+      orb(8);
+      doc.text(p.val, px, cy+27);
+    });
+    cy += projH + 6;
+
+
+    // ── SAVE ──────────────────────────────────────────────────────
+    const rootName = root ? root.name.replace(/\s+/g,'_') : 'Matrix';
+    doc.save(`HAMOTECH_Matrix_Report_${rootName}_${new Date().toISOString().split('T')[0]}.pdf`);
+    showToast('✓ PDF report downloaded!');
+  } catch(err) {
+    console.error(err);
+    showToast('⚠ PDF generation failed: ' + err.message);
+  } finally {
+    btn.textContent = '⬇ PDF Report';
+    btn.style.pointerEvents = 'auto';
+  }
+}
+
+// Enter key to add member
+document.getElementById('memberName').addEventListener('keypress', e => {
+  if (e.key === 'Enter') addMember();
+});
+</script>
+</body>
+</html>
